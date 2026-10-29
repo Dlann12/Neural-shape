@@ -1,0 +1,1 @@
+Config: {"name": "neuralshape", "num_train_objects": 150, "num_val_objects": 25, "num_test_objects": 30, "grid_size": 24, "img_size": 64, "epochs": 20, "batch_size": 8, "lr": 0.002, "seed": 42, "train_augmented": true, "model": {"feat_channels": 32, "hidden_3d": 32, "grid_size": 24}}

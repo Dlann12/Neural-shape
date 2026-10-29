@@ -1,0 +1,69 @@
+{
+  "experiment_name": "neuralshape (standard)",
+  "best_epoch": 3,
+  "best_val_iou": 0.3924,
+  "calibration": {
+    "threshold": 0.35,
+    "val_iou_at_threshold": 0.4456,
+    "val_iou_at_0.5": 0.3924
+  },
+  "num_parameters": 780338,
+  "training_time_sec": 28.56,
+  "checkpoint_path": "/home/kerja/Documents/neuralshape/storage/checkpoints/neuralshape_multiview.pt",
+  "model_config": {
+    "feat_channels": 32,
+    "hidden_3d": 32,
+    "grid_size": 24
+  },
+  "train_config": {
+    "epochs": 4,
+    "batch_size": 8,
+    "lr": 0.002,
+    "seed": 42,
+    "weight_decay": 0.0001,
+    "single_view_prob": 0.2,
+    "grad_clip": 1.0,
+    "patience": null,
+    "num_train_objects": 30,
+    "num_val_objects": 10,
+    "photometric_aug": false
+  },
+  "history": [
+    {
+      "epoch": 1,
+      "train_loss": 0.5604,
+      "train_iou": 0.0,
+      "val_loss": 0.4958,
+      "val_iou": 0.0143,
+      "val_iou_1view": 0.0052,
+      "lr": 0.001819
+    },
+    {
+      "epoch": 2,
+      "train_loss": 0.463,
+      "train_iou": 0.1811,
+      "val_loss": 0.422,
+      "val_iou": 0.3218,
+      "val_iou_1view": 0.2499,
+      "lr": 0.001149
+    },
+    {
+      "epoch": 3,
+      "train_loss": 0.3993,
+      "train_iou": 0.378,
+      "val_loss": 0.3939,
+      "val_iou": 0.3924,
+      "val_iou_1view": 0.2841,
+      "lr": 0.000414
+    },
+    {
+      "epoch": 4,
+      "train_loss": 0.4315,
+      "train_iou": 0.3286,
+      "val_loss": 0.3891,
+      "val_iou": 0.3917,
+      "val_iou_1view": 0.2857,
+      "lr": 0.0001
+    }
+  ]
+}

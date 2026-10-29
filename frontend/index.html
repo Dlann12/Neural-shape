@@ -1,0 +1,1282 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NeuralShape — AI 3D Reconstruction & Anime Action Figure Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .checkerboard-bg {
+      background-color: #0f172a;
+      background-image: 
+        linear-gradient(45deg, #1e293b 25%, transparent 25%), 
+        linear-gradient(-45deg, #1e293b 25%, transparent 25%), 
+        linear-gradient(45deg, transparent 75%, #1e293b 75%), 
+        linear-gradient(-45deg, transparent 75%, #1e293b 75%);
+      background-size: 16px 16px;
+      background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+    }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #0b1120; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #334155; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
+
+  <!-- Header -->
+  <header class="border-b border-slate-800 bg-slate-900/95 backdrop-blur px-6 py-3 flex items-center justify-between sticky top-0 z-50">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center font-bold text-white shadow-md shadow-indigo-600/30">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5" /></svg>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="font-bold text-base leading-none tracking-tight">NeuralShape Studio</h1>
+          <span class="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">v1.2 AI 3D</span>
+        </div>
+        <p class="text-xs text-slate-400 mt-0.5">Image-to-3D Action Figure Generator & PyTorch Multi-View Occupancy Lab</p>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="flex items-center gap-1.5 bg-slate-950/80 p-1 rounded-xl border border-slate-800">
+      <button onclick="switchTab('action-figure')" id="tab-action-figure" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white shadow transition flex items-center gap-1.5">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+        <span>Anime & Action Figure 3D</span>
+      </button>
+      <button onclick="switchTab('workspace')" id="tab-workspace" class="px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition flex items-center gap-1.5">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+        <span>Multi-View 3D Studio</span>
+      </button>
+      <button onclick="switchTab('mllab')" id="tab-mllab" class="px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition flex items-center gap-1.5">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+        <span>ML Lab & Benchmarks</span>
+      </button>
+    </div>
+
+    <!-- Health Badge -->
+    <div class="flex items-center gap-2">
+      <div class="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg bg-emerald-950/70 border border-emerald-800/60 text-emerald-400 font-mono">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span>Backend Ready</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ========================================================================= -->
+  <!-- VIEW 1: ANIME & ACTION FIGURE 3D STUDIO (PRIMARY FEATURE)                 -->
+  <!-- ========================================================================= -->
+  <main id="view-action-figure" class="flex-1 grid grid-cols-12 gap-4 p-4">
+    
+    <!-- Left Column: Image Selection & Settings -->
+    <section class="col-span-3 flex flex-col gap-3 custom-scrollbar overflow-y-auto max-h-[calc(100vh-80px)]">
+      
+      <!-- Preset Samples Card -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400">1. Sample Anime Presets</h2>
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-900/60 text-indigo-300 font-medium">Siap Uji</span>
+        </div>
+        <p class="text-xs text-slate-400 mb-3">Klik salah satu sample karakter anime di bawah untuk langsung mencoba konversi 3D:</p>
+        
+        <div class="grid grid-cols-2 gap-2" id="action-figure-sample-list">
+          <!-- Dynamically populated or fallback -->
+          <div onclick="selectSamplePreset('anime_hero')" id="preset-card-anime_hero" class="group relative rounded-lg border-2 border-indigo-600 bg-slate-950 p-1.5 cursor-pointer hover:border-indigo-400 transition">
+            <div class="aspect-square rounded overflow-hidden bg-slate-900 flex items-center justify-center">
+              <img src="/api/action-figures/samples/anime_hero/image" alt="Samurai Anime Hero" class="w-full h-full object-cover group-hover:scale-105 transition" />
+            </div>
+            <div class="mt-1.5">
+              <div class="font-semibold text-xs text-slate-200 truncate">Samurai Hero</div>
+              <div class="text-[10px] text-slate-400">Armor & Katana</div>
+            </div>
+          </div>
+          <div onclick="selectSamplePreset('anime_chibi')" id="preset-card-anime_chibi" class="group relative rounded-lg border border-slate-800 bg-slate-950 p-1.5 cursor-pointer hover:border-slate-600 transition">
+            <div class="aspect-square rounded overflow-hidden bg-slate-900 flex items-center justify-center">
+              <img src="/api/action-figures/samples/anime_chibi/image" alt="Magical Girl Chibi" class="w-full h-full object-cover group-hover:scale-105 transition" />
+            </div>
+            <div class="mt-1.5">
+              <div class="font-semibold text-xs text-slate-200 truncate">Magical Chibi</div>
+              <div class="text-[10px] text-slate-400">Twintails & Wand</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Upload Custom Image Card -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm">
+        <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">2. Atau Unggah Gambar Apapun</h2>
+        <p class="text-xs text-slate-400 mb-2.5">Bisa foto anime, figurine fisik, mainan, robot mecha, atau foto benda apapun:</p>
+
+        <!-- Dropzone -->
+        <label for="action-figure-file" class="group flex flex-col items-center justify-center border-2 border-dashed border-slate-700 hover:border-indigo-500 rounded-lg p-4 cursor-pointer bg-slate-950/50 hover:bg-slate-900/50 transition">
+          <svg class="w-7 h-7 text-slate-400 group-hover:text-indigo-400 mb-1 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+          <span class="text-xs font-medium text-slate-300">Pilih Foto dari Komputer</span>
+          <span class="text-[10px] text-slate-500 mt-0.5">Mendukung JPG, PNG, WEBP</span>
+          <input id="action-figure-file" type="file" accept="image/*" class="hidden" onchange="handleActionFigureFileUpload(event)" />
+        </label>
+
+        <!-- Format Advice Callout -->
+        <div class="mt-2.5 p-2.5 rounded-lg bg-amber-950/30 border border-amber-800/40 text-[11px] text-amber-200/90 flex items-start gap-2">
+          <span class="text-xs">💡</span>
+          <span><strong>Format Ideal:</strong> Gunakan <strong>1 foto karakter/objek tunggal</strong> menghadap depan atau pose 3/4. Hindari lembar turnaround/sprite sheet (kumpulan banyak pose dalam 1 gambar) agar figur tidak bertumpuk.</span>
+        </div>
+
+        <!-- Multi-pose detection alert (hidden by default) -->
+        <div id="sheet-warning-box" class="hidden mt-2 p-2.5 rounded-lg bg-rose-950/40 border border-rose-800/60 text-[11px] text-rose-300 flex items-start gap-2">
+          <span class="text-xs">⚠️</span>
+          <span><strong>Peringatan Turnaround Sheet:</strong> Gambar terdeteksi melebar (banyak sudut pandang sekaligus). AI memproses 1 subjek tunggal. Sebaiknya potong (crop) 1 figur saja (misal tampak depan) agar figur 3D tidak menyatu jadi pilar/gumpalan.</span>
+        </div>
+
+        <!-- Image Preview -->
+        <div id="action-figure-preview-box" class="mt-3 p-2 rounded-lg bg-slate-950 border border-slate-800 flex items-center gap-3">
+          <img id="action-figure-preview-img" src="/api/action-figures/samples/anime_hero/image" class="w-14 h-14 object-contain rounded bg-slate-900 border border-slate-800" />
+          <div class="flex-1 min-w-0">
+            <div id="action-figure-selected-title" class="text-xs font-semibold text-slate-200 truncate">Samurai Anime Hero</div>
+            <div id="action-figure-selected-desc" class="text-[10px] text-indigo-400">Sample Preset Dipilih</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings & Generate Card -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm flex flex-col gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Nama Karakter / Objek:</label>
+          <input id="action-figure-name" type="text" value="Samurai Anime Hero" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Resolusi Detail 3D (Marching Cubes):</label>
+          <div class="grid grid-cols-3 gap-1.5 text-xs font-medium">
+            <button type="button" onclick="setActionFigureRes(96)" id="btn-res-96" class="py-1.5 px-2 rounded-lg border border-slate-700 bg-slate-950 text-slate-300 text-[11px] hover:border-slate-500 transition">
+              Fast (96³)
+            </button>
+            <button type="button" onclick="setActionFigureRes(128)" id="btn-res-128" class="py-1.5 px-2 rounded-lg border-2 border-indigo-600 bg-indigo-950/40 text-indigo-300 text-[11px] font-semibold transition">
+              Studio (128³)
+            </button>
+            <button type="button" onclick="setActionFigureRes(160)" id="btn-res-160" class="py-1.5 px-2 rounded-lg border border-slate-700 bg-slate-950 text-slate-300 text-[11px] hover:border-slate-500 transition">
+              Ultra (160³)
+            </button>
+          </div>
+          <span class="text-[10px] text-slate-400 mt-1 block">128³ menghasilkan detail tajam pada wajah, rambut & aksesoris figur.</span>
+        </div>
+
+        <div class="flex items-center gap-2 pt-1 border-t border-slate-800">
+          <input id="action-figure-removebg" type="checkbox" checked class="w-4 h-4 rounded text-indigo-600 bg-slate-950 border-slate-700 focus:ring-indigo-500" />
+          <label for="action-figure-removebg" class="text-xs text-slate-300 cursor-pointer">
+            AI Auto-Matting (Hapus background otomatis)
+          </label>
+        </div>
+
+        <button id="btn-generate-action-figure" onclick="generateActionFigure()" class="w-full mt-1 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold py-2.5 rounded-lg text-xs shadow-lg shadow-indigo-600/30 transition flex items-center justify-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+          <span>Buat Objek 3D Berwarna Sekarang</span>
+        </button>
+      </div>
+
+      <!-- History Collection -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm flex-1">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Koleksi Action Figure Saya</h3>
+          <button onclick="refreshActionFigureHistory()" class="text-[11px] text-indigo-400 hover:underline">Refresh</button>
+        </div>
+        <div id="action-figure-history-list" class="space-y-2 text-xs">
+          <!-- Populated by JS -->
+          <div class="text-[11px] text-slate-400 text-center py-4">Memuat koleksi...</div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Center Column: Interactive 3D Viewport -->
+    <section class="col-span-6 bg-slate-900 border border-slate-800 rounded-xl flex flex-col overflow-hidden relative shadow-md">
+      
+      <!-- Viewport Header Toolbar -->
+      <div class="p-3 border-b border-slate-800 flex items-center justify-between bg-slate-900/90 backdrop-blur z-10">
+        <!-- Shading Modes -->
+        <div class="flex items-center gap-1.5">
+          <span class="text-[11px] text-slate-400 font-semibold mr-1">Shading:</span>
+          <button onclick="setActionFigureShading('color')" id="btn-af-color" class="px-2.5 py-1 rounded-md text-xs font-semibold bg-indigo-600 text-white shadow">Full Color (RGB)</button>
+          <button onclick="setActionFigureShading('clay')" id="btn-af-clay" class="px-2.5 py-1 rounded-md text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700">Studio Clay</button>
+          <button onclick="setActionFigureShading('wireframe')" id="btn-af-wire" class="px-2.5 py-1 rounded-md text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700">Wireframe</button>
+          <button onclick="setActionFigureShading('normal')" id="btn-af-norm" class="px-2.5 py-1 rounded-md text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700">Normal</button>
+        </div>
+
+        <!-- Camera Controls -->
+        <div class="flex items-center gap-1.5">
+          <button onclick="toggleTurntable()" id="btn-turntable" class="px-2.5 py-1 rounded-md text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700 flex items-center gap-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-slate-400" id="turntable-indicator"></span>
+            <span>Spin Turntable</span>
+          </button>
+          <button onclick="resetActionFigureCamera()" class="px-2.5 py-1 rounded-md text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700">Reset Kamera</button>
+        </div>
+      </div>
+
+      <!-- 3D Canvas Container -->
+      <div class="relative flex-1 w-full min-h-[480px]">
+        <div id="action-figure-canvas" class="w-full h-full"></div>
+
+        <!-- Loading / Progress Overlay -->
+        <div id="action-figure-overlay" class="absolute inset-0 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-center p-6 z-20 hidden">
+          <div class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl flex flex-col items-center text-center">
+            
+            <div class="relative w-16 h-16 mb-4">
+              <div class="absolute inset-0 rounded-full border-4 border-slate-800"></div>
+              <div class="absolute inset-0 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin"></div>
+              <div class="absolute inset-0 flex items-center justify-center font-bold text-xs text-indigo-400" id="overlay-pct-text">0%</div>
+            </div>
+
+            <h3 class="font-bold text-base text-slate-100" id="overlay-stage-title">Membuat 3D Action Figure</h3>
+            <p class="text-xs text-slate-400 mt-1 mb-5" id="overlay-stage-desc">Menginisialisasi pipeline transformer...</p>
+
+            <!-- Progress Bar -->
+            <div class="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800 mb-4">
+              <div id="overlay-progress-bar" class="h-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all duration-300" style="width: 10%"></div>
+            </div>
+
+            <!-- Pipeline Stages Checklist -->
+            <div class="w-full text-left space-y-2 text-xs">
+              <div class="flex items-center gap-2 text-slate-400" id="step-badge-1">
+                <span class="w-4 h-4 rounded-full border border-slate-700 flex items-center justify-center text-[10px]">1</span>
+                <span>Segmentasi AI & Ekstraksi Background (RMBG 2.0)</span>
+              </div>
+              <div class="flex items-center gap-2 text-slate-400" id="step-badge-2">
+                <span class="w-4 h-4 rounded-full border border-slate-700 flex items-center justify-center text-[10px]">2</span>
+                <span>Feed-Forward NeRF Transformer (Triplane Extractor)</span>
+              </div>
+              <div class="flex items-center gap-2 text-slate-400" id="step-badge-3">
+                <span class="w-4 h-4 rounded-full border border-slate-700 flex items-center justify-center text-[10px]">3</span>
+                <span>Ekstraksi Geometri 3D (Marching Cubes Isosurface)</span>
+              </div>
+              <div class="flex items-center gap-2 text-slate-400" id="step-badge-4">
+                <span class="w-4 h-4 rounded-full border border-slate-700 flex items-center justify-center text-[10px]">4</span>
+                <span>Pewarnaan Tekstur RGB & Normalisasi Pedestal</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Watermark / Controls Helper -->
+        <div class="absolute bottom-3 left-3 bg-slate-950/70 backdrop-blur px-3 py-1.5 rounded-lg border border-slate-800/80 text-[11px] text-slate-400 flex items-center gap-3">
+          <span>🖱️ Putar: Klik Kiri</span>
+          <span>🔍 Zoom: Scroll</span>
+          <span>↔️ Geser: Klik Kanan</span>
+        </div>
+      </div>
+
+      <!-- Viewport Bottom Status Bar -->
+      <div class="p-3 border-t border-slate-800 bg-slate-950 flex items-center justify-between">
+        <div class="flex items-center gap-4 text-xs font-mono text-slate-400">
+          <span>Vertices: <strong class="text-slate-200" id="af-stat-verts">11,580</strong></span>
+          <span>Faces: <strong class="text-slate-200" id="af-stat-faces">23,180</strong></span>
+          <span>Waktu: <strong class="text-indigo-400" id="af-stat-time">~12.4s</strong></span>
+          <span>Format: <strong class="text-emerald-400">Vertex Color RGB</strong></span>
+        </div>
+
+        <!-- Download Buttons -->
+        <div class="flex items-center gap-2">
+          <a id="btn-download-glb" href="#" download="action_figure.glb" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow transition flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+            <span>Unduh .GLB</span>
+          </a>
+          <a id="btn-download-obj" href="#" download="action_figure.obj" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 transition">
+            <span>.OBJ</span>
+          </a>
+          <a id="btn-download-ply" href="#" download="action_figure.ply" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 transition">
+            <span>.PLY</span>
+          </a>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Right Column: 2D Inspection & Technical Details -->
+    <section class="col-span-3 flex flex-col gap-3 custom-scrollbar overflow-y-auto max-h-[calc(100vh-80px)]">
+      
+      <!-- 2D AI Matting Inspection Card -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm">
+        <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Segmentasi & Cutout 2D</h2>
+        <p class="text-xs text-slate-400 mb-3">Hasil pemotongan background otomatis oleh AI (RMBG 2.0):</p>
+        
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <span class="block text-[10px] text-slate-500 mb-1">Foto Asli</span>
+            <div class="aspect-square rounded-lg bg-slate-950 border border-slate-800 overflow-hidden flex items-center justify-center">
+              <img id="inspect-img-source" src="/api/action-figures/samples/anime_hero/image" class="w-full h-full object-contain" />
+            </div>
+          </div>
+          <div>
+            <span class="block text-[10px] text-slate-500 mb-1">Cutout AI (Transparan)</span>
+            <div class="aspect-square rounded-lg checkerboard-bg border border-slate-800 overflow-hidden flex items-center justify-center">
+              <img id="inspect-img-cutout" src="/sample_images/4_anime_action_figure/anime_hero_cutout.png" class="w-full h-full object-contain" />
+            </div>
+          </div>
+        </div>
+        <div class="mt-2 text-right">
+          <a id="inspect-cutout-link" href="/sample_images/4_anime_action_figure/anime_hero_cutout.png" target="_blank" download="cutout.png" class="text-[11px] text-indigo-400 hover:underline">Unduh Cutout PNG Transparan →</a>
+        </div>
+      </div>
+
+      <!-- Architecture Pipeline Card -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm">
+        <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Arsitektur TripoSR Transformer</h2>
+        <div class="space-y-2.5 text-xs text-slate-300">
+          <div class="p-2.5 rounded-lg bg-slate-950 border border-slate-800">
+            <div class="font-semibold text-indigo-400">1. ViT Tokenizer (DINO-v2)</div>
+            <p class="text-[11px] text-slate-400 mt-0.5">Mengekstrak visual feature tokens berkulitas tinggi dari input 512×512.</p>
+          </div>
+          <div class="p-2.5 rounded-lg bg-slate-950 border border-slate-800">
+            <div class="font-semibold text-indigo-400">2. Triplane Transformer 1D</div>
+            <p class="text-[11px] text-slate-400 mt-0.5">Memetakan 2D token ke 3 bidang ortogonal (XY, XZ, YZ) NeRF volumetrik.</p>
+          </div>
+          <div class="p-2.5 rounded-lg bg-slate-950 border border-slate-800">
+            <div class="font-semibold text-indigo-400">3. Continuous NeRF MLP Decoder</div>
+            <p class="text-[11px] text-slate-400 mt-0.5">Menghitung densitas dan warna RGB kontinu di setiap titik ruang 3D.</p>
+          </div>
+          <div class="p-2.5 rounded-lg bg-slate-950 border border-slate-800">
+            <div class="font-semibold text-indigo-400">4. CPU Marching Cubes</div>
+            <p class="text-[11px] text-slate-400 mt-0.5">Ekstraksi jaring poligon 3D halus instan dengan warna per vertex.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Telemetry Card -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm">
+        <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Spesifikasi Komputasi</h2>
+        <div class="grid grid-cols-2 gap-2 text-xs">
+          <div class="p-2 rounded bg-slate-950 border border-slate-800">
+            <span class="text-[10px] text-slate-500 block">Perangkat Inferensi</span>
+            <strong class="text-slate-200">12-Core CPU</strong>
+          </div>
+          <div class="p-2 rounded bg-slate-950 border border-slate-800">
+            <span class="text-[10px] text-slate-500 block">Kebutuhan VRAM</span>
+            <strong class="text-slate-200">0 GB (Pure CPU)</strong>
+          </div>
+          <div class="p-2 rounded bg-slate-950 border border-slate-800">
+            <span class="text-[10px] text-slate-500 block">RAM Peak</span>
+            <strong class="text-indigo-400">~650 MB</strong>
+          </div>
+          <div class="p-2 rounded bg-slate-950 border border-slate-800">
+            <span class="text-[10px] text-slate-500 block">Kecepatan Inferensi</span>
+            <strong class="text-emerald-400">~12 - 45 Detik</strong>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+
+  <!-- ========================================================================= -->
+  <!-- VIEW 2: MULTI-VIEW 3D STUDIO (ORIGINAL CALIBRATED WORKSPACE)               -->
+  <!-- ========================================================================= -->
+  <main id="view-workspace" class="flex-1 grid grid-cols-12 gap-4 p-4 hidden">
+    <!-- Left Panel: Input & Validation -->
+    <section class="col-span-3 bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col gap-4">
+      <div>
+        <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400">1. Proyek Multi-View Calibrated</h2>
+        <div class="mt-2 flex flex-col gap-2">
+          <input id="proj-name" type="text" value="Demo_Hollow_Chair_01" class="bg-slate-950 border border-slate-700 rounded px-3 py-1.5 text-xs text-slate-200" />
+          <select id="proj-cat" class="bg-slate-950 border border-slate-700 rounded px-3 py-1.5 text-xs text-slate-200">
+            <option value="chair">Kategori: Chair (Concave Armrest)</option>
+            <option value="hollow_vessel">Kategori: Hollow Vessel (Concave Bowl)</option>
+            <option value="arch_monument">Kategori: Arch Monument (Tunnel)</option>
+            <option value="table">Kategori: Table (Recessed Tray)</option>
+            <option value="stepped_sculpture">Kategori: Stepped Sculpture</option>
+          </select>
+          <div class="mt-2 pt-2 border-t border-slate-800/80">
+            <label class="block text-xs text-slate-400 mb-1">Unggah Multi-View (8 Sudut Kamera):</label>
+            <input id="proj-files" type="file" multiple accept="image/*" class="text-xs text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-slate-800 file:text-slate-200 hover:file:bg-slate-700 w-full cursor-pointer" />
+          </div>
+          <button id="btn-run" onclick="createAndRunProject()" class="mt-1 bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2 rounded-lg text-xs transition flex items-center justify-center gap-2 shadow">
+            <span>Buat Proyek + Jalankan Rekonstruksi</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="border-t border-slate-800 pt-3">
+        <div class="flex justify-between items-center">
+          <span class="text-xs font-semibold uppercase text-slate-400">Status Proyek</span>
+          <span id="status-badge" class="text-xs px-2 py-0.5 rounded bg-emerald-900/60 text-emerald-300">Ready</span>
+        </div>
+        <p id="validation-summary" class="text-xs text-slate-400 mt-2">
+          8 kamera virtual terkalibrasi (front, diagonal, side, back, top-elevated). Validasi OpenCV: Lolos pemeriksaan blur, pencahayaan, dan duplikasi.
+        </p>
+      </div>
+
+      <div class="border-t border-slate-800 pt-3 flex-1">
+        <h3 class="text-xs font-semibold uppercase text-slate-400 mb-2">Panduan Multi-View (FR-01)</h3>
+        <ul class="text-xs text-slate-400 space-y-1 list-disc pl-4">
+          <li>Unggah 8 foto objek dari sudut terkalibrasi (setiap 45°).</li>
+          <li>Sertakan sudut diagonal atas untuk menangkap cekungan.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Center: Interactive 3D Viewer -->
+    <section class="col-span-6 bg-slate-900 border border-slate-800 rounded-xl flex flex-col overflow-hidden relative shadow">
+      <div class="p-3 border-b border-slate-800 flex items-center justify-between bg-slate-900/90 z-10">
+        <div class="flex gap-1.5">
+          <button onclick="setRenderMode('solid')" class="px-2.5 py-1 rounded text-xs bg-slate-800 hover:bg-slate-700">Solid</button>
+          <button onclick="setRenderMode('wireframe')" class="px-2.5 py-1 rounded text-xs bg-slate-800 hover:bg-slate-700">Wireframe</button>
+          <button onclick="setRenderMode('points')" class="px-2.5 py-1 rounded text-xs bg-slate-800 hover:bg-slate-700">Point Cloud</button>
+          <button onclick="resetCamera()" class="px-2.5 py-1 rounded text-xs bg-slate-800 hover:bg-slate-700">Reset Kamera</button>
+        </div>
+        <div class="flex gap-1.5">
+          <button onclick="selectModelSource('ml')" id="btn-src-ml" class="px-2.5 py-1 rounded text-xs bg-indigo-600 text-white">PyTorch Multi-View ML</button>
+          <button onclick="selectModelSource('baseline')" id="btn-src-base" class="px-2.5 py-1 rounded text-xs bg-slate-800 text-slate-300">Classical Baseline</button>
+        </div>
+      </div>
+      <div id="viewer-container" class="flex-1 w-full min-h-[460px]"></div>
+      <div class="p-2.5 border-t border-slate-800 bg-slate-950 flex justify-between text-xs text-slate-400">
+        <span id="mesh-stats">Vertices: -- | Faces: -- | Representation: Occupancy Mesh</span>
+        <span>Mouse Kiri: Rotasi · Scroll: Zoom · Mouse Kanan: Pan</span>
+      </div>
+    </section>
+
+    <!-- Right Panel: Quantitative Metrics & Export -->
+    <section class="col-span-3 bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col gap-4">
+      <div>
+        <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400">2. Evaluasi Metrik</h2>
+        <div class="mt-3 space-y-2 text-xs">
+          <div class="p-3 rounded-lg bg-slate-950 border border-slate-800">
+            <div class="font-semibold text-indigo-400 mb-1">PyTorch Multi-View ML</div>
+            <div class="grid grid-cols-2 gap-1 text-slate-300">
+              <span>IoU:</span><strong id="m-ml-iou" class="text-right">--</strong>
+              <span>Chamfer:</span><strong id="m-ml-cd" class="text-right">--</strong>
+              <span>F-Score:</span><strong id="m-ml-f1" class="text-right">--</strong>
+            </div>
+          </div>
+          <div class="p-3 rounded-lg bg-slate-950 border border-slate-800">
+            <div class="font-semibold text-slate-400 mb-1">Classical Visual Hull</div>
+            <div class="grid grid-cols-2 gap-1 text-slate-300">
+              <span>IoU:</span><strong id="m-base-iou" class="text-right">--</strong>
+              <span>Chamfer:</span><strong id="m-base-cd" class="text-right">--</strong>
+              <span>F-Score:</span><strong id="m-base-f1" class="text-right">--</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="border-t border-slate-800 pt-3">
+        <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Ekspor Model Multi-View</h2>
+        <div class="flex gap-2">
+          <button onclick="exportCurrentMesh('obj')" class="flex-1 bg-slate-800 hover:bg-slate-700 py-1.5 rounded text-xs">Unduh OBJ</button>
+          <button onclick="exportCurrentMesh('ply')" class="flex-1 bg-slate-800 hover:bg-slate-700 py-1.5 rounded text-xs">Unduh PLY</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ========================================================================= -->
+  <!-- VIEW 3: ML LAB & BENCHMARKS                                               -->
+  <!-- ========================================================================= -->
+  <main id="view-mllab" class="flex-1 p-6 hidden max-w-6xl mx-auto w-full">
+    <div class="grid grid-cols-12 gap-6">
+      <section class="col-span-5 bg-slate-900 border border-slate-800 rounded-xl p-5 shadow">
+        <h2 class="text-sm font-bold uppercase tracking-wider text-slate-300 mb-2">Pelatihan Eksperimen PyTorch</h2>
+        <p class="text-xs text-slate-400 mb-4">Latih model Multi-View Occupancy Net untuk meningkatkan IoU dan generalisasi objek.</p>
+        
+        <div class="space-y-3 text-xs">
+          <div>
+            <label class="block text-slate-400 mb-1">Nama Eksperimen:</label>
+            <input id="exp-name" type="text" value="Experiment D (Optimized)" class="w-full bg-slate-950 border border-slate-700 rounded px-3 py-1.5 text-slate-200" />
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-slate-400 mb-1">Epochs:</label>
+              <input id="exp-epochs" type="number" value="10" min="1" max="100" class="w-full bg-slate-950 border border-slate-700 rounded px-3 py-1.5 text-slate-200" />
+            </div>
+            <div>
+              <label class="block text-slate-400 mb-1">Jumlah Objek:</label>
+              <input id="exp-objects" type="number" value="60" min="5" max="500" class="w-full bg-slate-950 border border-slate-700 rounded px-3 py-1.5 text-slate-200" />
+            </div>
+          </div>
+          <button onclick="startExperiment()" id="btn-start-exp" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2.5 rounded-lg text-xs mt-2 shadow transition">
+            Mulai Pelatihan ML
+          </button>
+        </div>
+      </section>
+
+      <section class="col-span-7 bg-slate-900 border border-slate-800 rounded-xl p-5 shadow flex flex-col">
+        <h2 class="text-sm font-bold uppercase tracking-wider text-slate-300 mb-2">Hasil & Metrik Validasi</h2>
+        <div id="exp-results-box" class="flex-1 bg-slate-950 border border-slate-800 rounded-lg p-4 font-mono text-xs text-slate-300 overflow-y-auto max-h-[400px]">
+          Tekan "Mulai Pelatihan ML" untuk melihat progress live training.
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- ========================================================================= -->
+  <!-- JAVASCRIPT LOGIC & THREE.JS 3D RENDERER                                   -->
+  <!-- ========================================================================= -->
+  <script>
+    // Global State
+    let currentTab = 'action-figure';
+    let selectedPreset = 'anime_hero';
+    let uploadedFile = null;
+    let currentFigureId = 'fig_ffb8737a'; // Default to pre-generated chibi or hero
+    let currentResolution = 128;
+    let afScene, afCamera, afRenderer, afControls, afCurrentMesh, afTurntableBase;
+    let isTurntableActive = false;
+    let afShadingMode = 'color';
+
+    // Multi-View state
+    let mvScene, mvCamera, mvRenderer, mvControls, mvCurrentMesh;
+    let currentProjectId = null;
+    let currentModelSource = 'ml';
+
+    // Initialization
+    window.addEventListener('DOMContentLoaded', () => {
+      initActionFigure3D();
+      initMultiView3D();
+      loadInitialFigure();
+      refreshActionFigureHistory();
+    });
+
+    // Tab Switching
+    function switchTab(tab) {
+      currentTab = tab;
+      ['action-figure', 'workspace', 'mllab'].forEach(t => {
+        const view = document.getElementById(`view-${t}`);
+        const btn = document.getElementById(`tab-${t}`);
+        if (t === tab) {
+          view.classList.remove('hidden');
+          btn.className = "px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white shadow transition flex items-center gap-1.5";
+        } else {
+          view.classList.add('hidden');
+          btn.className = "px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition flex items-center gap-1.5";
+        }
+      });
+
+      // Resize three.js viewports
+      if (tab === 'action-figure' && afRenderer) onAfResize();
+      if (tab === 'workspace' && mvRenderer) onMvResize();
+    }
+
+    // =========================================================================
+    // ACTION FIGURE 3D THREE.JS SETUP
+    // =========================================================================
+    function initActionFigure3D() {
+      const container = document.getElementById('action-figure-canvas');
+      const width = container.clientWidth || 600;
+      const height = container.clientHeight || 480;
+
+      // Scene
+      afScene = new THREE.Scene();
+      afScene.background = new THREE.Color(0x090d16);
+
+      // Camera
+      afCamera = new THREE.PerspectiveCamera(40, width / height, 0.1, 100);
+      afCamera.position.set(0, 1.2, 2.5);
+
+      // Renderer
+      afRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      afRenderer.setSize(width, height);
+      afRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      afRenderer.shadowMap.enabled = true;
+      afRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      container.appendChild(afRenderer.domElement);
+
+      // OrbitControls
+      afControls = new THREE.OrbitControls(afCamera, afRenderer.domElement);
+      afControls.enableDamping = true;
+      afControls.dampingFactor = 0.05;
+      afControls.target.set(0, 0.5, 0);
+
+      // Studio Lighting
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
+      afScene.add(ambientLight);
+
+      // Key light (warm studio front-right)
+      const keyLight = new THREE.DirectionalLight(0xffffff, 1.1);
+      keyLight.position.set(2.5, 4, 3);
+      keyLight.castShadow = true;
+      afScene.add(keyLight);
+
+      // Fill light (soft cool front-left)
+      const fillLight = new THREE.DirectionalLight(0xa5b4fc, 0.6);
+      fillLight.position.set(-3, 2, 2);
+      afScene.add(fillLight);
+
+      // Rim light (sharp back-top backlight to highlight anime figure silhouettes)
+      const rimLight = new THREE.DirectionalLight(0x818cf8, 0.9);
+      rimLight.position.set(0, 3, -3);
+      afScene.add(rimLight);
+
+      // Studio Turntable Pedestal (cylindrical stand)
+      const standGeo = new THREE.CylinderGeometry(0.85, 0.9, 0.04, 64);
+      const standMat = new THREE.MeshStandardMaterial({
+        color: 0x1e293b,
+        metalness: 0.3,
+        roughness: 0.4,
+      });
+      afTurntableBase = new THREE.Mesh(standGeo, standMat);
+      afTurntableBase.position.y = -0.02;
+      afScene.add(afTurntableBase);
+
+      // Ground plane
+      const planeGeo = new THREE.PlaneGeometry(20, 20);
+      const planeMat = new THREE.MeshStandardMaterial({ color: 0x070b13, roughness: 0.8 });
+      const plane = new THREE.Mesh(planeGeo, planeMat);
+      plane.rotation.x = -Math.PI / 2;
+      plane.position.y = -0.04;
+      afScene.add(plane);
+
+      // Animation Loop
+      function animate() {
+        requestAnimationFrame(animate);
+        if (isTurntableActive && afCurrentMesh) {
+          afCurrentMesh.rotation.y += 0.01;
+        }
+        afControls.update();
+        afRenderer.render(afScene, afCamera);
+      }
+      animate();
+
+      window.addEventListener('resize', onAfResize);
+    }
+
+    function onAfResize() {
+      const container = document.getElementById('action-figure-canvas');
+      if (!container || !afRenderer || !afCamera) return;
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+      afCamera.aspect = width / height;
+      afCamera.updateProjectionMatrix();
+      afRenderer.setSize(width, height);
+    }
+
+    function resetActionFigureCamera() {
+      if (!afCamera || !afControls) return;
+      afCamera.position.set(0, 1.2, 2.5);
+      afControls.target.set(0, 0.5, 0);
+      afControls.update();
+      if (afCurrentMesh) afCurrentMesh.rotation.set(0, 0, 0);
+    }
+
+    function toggleTurntable() {
+      isTurntableActive = !isTurntableActive;
+      const ind = document.getElementById('turntable-indicator');
+      const btn = document.getElementById('btn-turntable');
+      if (isTurntableActive) {
+        ind.className = "w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse";
+        btn.className = "px-2.5 py-1 rounded-md text-xs font-semibold bg-indigo-900/60 text-indigo-200 border border-indigo-600/50 flex items-center gap-1";
+      } else {
+        ind.className = "w-1.5 h-1.5 rounded-full bg-slate-400";
+        btn.className = "px-2.5 py-1 rounded-md text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700 flex items-center gap-1";
+      }
+    }
+
+    function setActionFigureShading(mode) {
+      afShadingMode = mode;
+      ['color', 'clay', 'wireframe', 'normal'].forEach(m => {
+        const btn = document.getElementById(`btn-af-${m.slice(0, 4)}`);
+        if (btn) {
+          btn.className = m === mode 
+            ? "px-2.5 py-1 rounded-md text-xs font-semibold bg-indigo-600 text-white shadow"
+            : "px-2.5 py-1 rounded-md text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700";
+        }
+      });
+      applyShadingToMesh();
+    }
+
+    function applyShadingToMesh() {
+      if (!afCurrentMesh) return;
+      afCurrentMesh.traverse((child) => {
+        if (child.isMesh && child.geometry) {
+          // Always ensure valid vertex normals for standard lighting
+          if (!child.geometry.attributes.normal || child.geometry.attributes.normal.count === 0) {
+            child.geometry.computeVertexNormals();
+          }
+
+          if (afShadingMode === 'color') {
+            child.material = new THREE.MeshStandardMaterial({
+              vertexColors: child.geometry.attributes.color ? true : false,
+              color: child.geometry.attributes.color ? 0xffffff : 0x94a3b8,
+              roughness: 0.4,
+              metalness: 0.05,
+              side: THREE.DoubleSide,
+            });
+          } else if (afShadingMode === 'clay') {
+            child.material = new THREE.MeshStandardMaterial({
+              color: 0xd1d5db,
+              roughness: 0.6,
+              metalness: 0.05,
+              wireframe: false,
+              side: THREE.DoubleSide,
+            });
+          } else if (afShadingMode === 'wireframe') {
+            child.material = new THREE.MeshBasicMaterial({
+              color: 0x818cf8,
+              wireframe: true,
+            });
+          } else if (afShadingMode === 'normal') {
+            child.material = new THREE.MeshNormalMaterial({
+              wireframe: false,
+              side: THREE.DoubleSide,
+            });
+          }
+          child.material.needsUpdate = true;
+        }
+      });
+    }
+
+    // =========================================================================
+    // LOAD & DISPLAY 3D ACTION FIGURE
+    // =========================================================================
+    function loadActionFigureMesh(figureId) {
+      currentFigureId = figureId;
+      const glbUrl = `/api/action-figures/${figureId}/model?format=glb`;
+      const loader = new THREE.GLTFLoader();
+
+      loader.load(glbUrl, (gltf) => {
+        if (afCurrentMesh) afScene.remove(afCurrentMesh);
+        afCurrentMesh = gltf.scene;
+
+        // Ensure materials display vertex colors
+        applyShadingToMesh();
+
+        // Fit and position on turntable
+        const box = new THREE.Box3().setFromObject(afCurrentMesh);
+        const center = box.getCenter(new THREE.Vector3());
+        const size = box.getSize(new THREE.Vector3());
+
+        afCurrentMesh.position.x -= center.x;
+        afCurrentMesh.position.z -= center.z;
+        afCurrentMesh.position.y -= box.min.y; // Sit on ground
+
+        afScene.add(afCurrentMesh);
+        resetActionFigureCamera();
+
+        // Update Download links
+        document.getElementById('btn-download-glb').href = `/api/action-figures/${figureId}/model?format=glb`;
+        document.getElementById('btn-download-obj').href = `/api/action-figures/${figureId}/model?format=obj`;
+        document.getElementById('btn-download-ply').href = `/api/action-figures/${figureId}/model?format=ply`;
+
+        // Update Inspection Cutout Images
+        document.getElementById('inspect-img-source').src = `/api/action-figures/${figureId}/image?type=source`;
+        document.getElementById('inspect-img-cutout').src = `/api/action-figures/${figureId}/image?type=cutout`;
+        document.getElementById('inspect-cutout-link').href = `/api/action-figures/${figureId}/image?type=cutout`;
+
+        // Update stats
+        fetch(`/api/action-figures/${figureId}`)
+          .then(r => r.json())
+          .then(data => {
+            if (data.vertex_count) document.getElementById('af-stat-verts').innerText = Number(data.vertex_count).toLocaleString();
+            if (data.face_count) document.getElementById('af-stat-faces').innerText = Number(data.face_count).toLocaleString();
+            if (data.duration_seconds) document.getElementById('af-stat-time').innerText = `${data.duration_seconds.toFixed(1)}s`;
+          })
+          .catch(() => {});
+      }, undefined, (err) => {
+        console.warn("Failed loading GLB, trying OBJ fallback:", err);
+        loadActionFigureObj(figureId);
+      });
+    }
+
+    function loadActionFigureObj(figureId) {
+      const objUrl = `/api/action-figures/${figureId}/model?format=obj`;
+      fetch(objUrl)
+        .then(r => r.text())
+        .then(text => {
+          const lines = text.split('\n');
+          const positions = [];
+          const colors = [];
+          const indices = [];
+
+          for (const line of lines) {
+            const p = line.trim().split(/\s+/);
+            if (p[0] === 'v' && p.length >= 7) {
+              positions.push(parseFloat(p[1]), parseFloat(p[2]), parseFloat(p[3]));
+              colors.push(parseFloat(p[4]), parseFloat(p[5]), parseFloat(p[6]));
+            } else if (p[0] === 'f' && p.length >= 4) {
+              indices.push(
+                parseInt(p[1].split('/')[0]) - 1,
+                parseInt(p[2].split('/')[0]) - 1,
+                parseInt(p[3].split('/')[0]) - 1
+              );
+            }
+          }
+
+          const geo = new THREE.BufferGeometry();
+          geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+          geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+          geo.setIndex(indices);
+          geo.computeVertexNormals();
+
+          if (afCurrentMesh) afScene.remove(afCurrentMesh);
+          const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5 });
+          afCurrentMesh = new THREE.Mesh(geo, mat);
+
+          // Center and place on turntable
+          geo.computeBoundingBox();
+          const box = geo.boundingBox;
+          const center = box.getCenter(new THREE.Vector3());
+          afCurrentMesh.position.x -= center.x;
+          afCurrentMesh.position.z -= center.z;
+          afCurrentMesh.position.y -= box.min.y;
+
+          afScene.add(afCurrentMesh);
+          resetActionFigureCamera();
+        });
+    }
+
+    function loadInitialFigure() {
+      // Find latest completed figure from API or load test figure
+      fetch('/api/action-figures')
+        .then(r => r.json())
+        .then(figures => {
+          if (figures && figures.length > 0) {
+            const completed = figures.find(f => f.status === 'Completed') || figures[0];
+            loadActionFigureMesh(completed.id);
+          } else {
+            // Fallback to sample
+            loadActionFigureMesh('fig_test_cli');
+          }
+        })
+        .catch(() => loadActionFigureMesh('fig_test_cli'));
+    }
+
+    // Preset Selection
+    function selectSamplePreset(presetId) {
+      selectedPreset = presetId;
+      uploadedFile = null;
+      document.getElementById('action-figure-file').value = '';
+
+      ['anime_hero', 'anime_chibi'].forEach(p => {
+        const card = document.getElementById(`preset-card-${p}`);
+        if (p === presetId) {
+          card.className = "group relative rounded-lg border-2 border-indigo-600 bg-slate-950 p-1.5 cursor-pointer shadow-sm shadow-indigo-600/30 transition";
+        } else {
+          card.className = "group relative rounded-lg border border-slate-800 bg-slate-950 p-1.5 cursor-pointer hover:border-slate-600 transition";
+        }
+      });
+
+      const isHero = presetId === 'anime_hero';
+      document.getElementById('action-figure-preview-img').src = `/api/action-figures/samples/${presetId}/image`;
+      document.getElementById('action-figure-selected-title').innerText = isHero ? "Samurai Anime Hero" : "Magical Girl Chibi";
+      document.getElementById('action-figure-name').value = isHero ? "Samurai Anime Hero" : "Magical Girl Chibi";
+      document.getElementById('action-figure-selected-desc').innerText = "Sample Preset Dipilih";
+
+      const warn = document.getElementById('sheet-warning-box');
+      if (warn) warn.classList.add('hidden');
+    }
+
+    function handleActionFigureFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      uploadedFile = file;
+      selectedPreset = null;
+
+      // Deselect preset borders
+      ['anime_hero', 'anime_chibi'].forEach(p => {
+        document.getElementById(`preset-card-${p}`).className = "group relative rounded-lg border border-slate-800 bg-slate-950 p-1.5 cursor-pointer hover:border-slate-600 transition";
+      });
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUrl = e.target.result;
+        document.getElementById('action-figure-preview-img').src = dataUrl;
+        document.getElementById('action-figure-selected-title').innerText = file.name;
+        document.getElementById('action-figure-name').value = file.name.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " ");
+        document.getElementById('action-figure-selected-desc').innerText = `Foto Unggahan (${(file.size/1024).toFixed(0)} KB)`;
+
+        // Check aspect ratio to detect turnaround/sprite sheets
+        const imgObj = new Image();
+        imgObj.onload = () => {
+          const ratio = imgObj.width / imgObj.height;
+          const warn = document.getElementById('sheet-warning-box');
+          if (warn) {
+            if (ratio > 1.25) {
+              warn.classList.remove('hidden');
+            } else {
+              warn.classList.add('hidden');
+            }
+          }
+        };
+        imgObj.src = dataUrl;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function setActionFigureRes(res) {
+      currentResolution = res;
+      [96, 128, 160].forEach(r => {
+        const btn = document.getElementById(`btn-res-${r}`);
+        if (r === res) {
+          btn.className = "py-1.5 px-2 rounded-lg border-2 border-indigo-600 bg-indigo-950/40 text-indigo-300 text-[11px] font-semibold transition";
+        } else {
+          btn.className = "py-1.5 px-2 rounded-lg border border-slate-700 bg-slate-950 text-slate-300 text-[11px] hover:border-slate-500 transition";
+        }
+      });
+    }
+
+    // Generate Request
+    function generateActionFigure() {
+      const name = document.getElementById('action-figure-name').value.trim() || "Action Figure";
+      const removeBg = document.getElementById('action-figure-removebg').checked;
+      const res = currentResolution;
+
+      const formData = new FormData();
+      formData.append('name', name);
+      formData.append('mc_resolution', res);
+      formData.append('remove_bg', removeBg);
+
+      if (uploadedFile) {
+        formData.append('file', uploadedFile);
+      } else if (selectedPreset) {
+        formData.append('sample_preset', selectedPreset);
+      } else {
+        formData.append('sample_preset', 'anime_hero');
+      }
+
+      showOverlay(true);
+      updateOverlayStage(1, "Mengunggah gambar & memulai pipeline...", 10);
+
+      fetch('/api/action-figures/generate', {
+        method: 'POST',
+        body: formData,
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.id) {
+          pollActionFigureJob(data.id);
+        } else {
+          showOverlay(false);
+          alert("Gagal memulai job: " + (data.detail || "Kesalahan tidak diketahui"));
+        }
+      })
+      .catch(err => {
+        showOverlay(false);
+        alert("Gagal menghubungi server: " + err);
+      });
+    }
+
+    function pollActionFigureJob(figId) {
+      const pollInterval = setInterval(() => {
+        fetch(`/api/action-figures/${figId}`)
+          .then(r => r.json())
+          .then(data => {
+            const pct = data.progress || 10;
+            const msg = data.progress_msg || "Sedang memproses...";
+            let stepNum = 1;
+            if (pct >= 85) stepNum = 4;
+            else if (pct >= 60) stepNum = 3;
+            else if (pct >= 35) stepNum = 2;
+
+            updateOverlayStage(stepNum, msg, pct);
+
+            if (data.status === 'Completed') {
+              clearInterval(pollInterval);
+              setTimeout(() => {
+                showOverlay(false);
+                loadActionFigureMesh(figId);
+                refreshActionFigureHistory();
+              }, 600);
+            } else if (data.status === 'Failed') {
+              clearInterval(pollInterval);
+              showOverlay(false);
+              alert("Gagal membuat 3D: " + (data.error || "Unknown error"));
+            }
+          })
+          .catch(() => {});
+      }, 1500);
+    }
+
+    function showOverlay(show) {
+      const overlay = document.getElementById('action-figure-overlay');
+      if (show) overlay.classList.remove('hidden');
+      else overlay.classList.add('hidden');
+    }
+
+    function updateOverlayStage(stepNum, desc, pct) {
+      document.getElementById('overlay-stage-desc').innerText = desc;
+      document.getElementById('overlay-pct-text').innerText = `${pct}%`;
+      document.getElementById('overlay-progress-bar').style.width = `${pct}%`;
+
+      for (let i = 1; i <= 4; i++) {
+        const badge = document.getElementById(`step-badge-${i}`);
+        if (i < stepNum) {
+          badge.className = "flex items-center gap-2 text-emerald-400 font-medium";
+          badge.querySelector('span:first-child').className = "w-4 h-4 rounded-full bg-emerald-950 border border-emerald-500 text-emerald-300 flex items-center justify-center text-[10px]";
+        } else if (i === stepNum) {
+          badge.className = "flex items-center gap-2 text-indigo-400 font-semibold";
+          badge.querySelector('span:first-child').className = "w-4 h-4 rounded-full bg-indigo-950 border border-indigo-400 text-indigo-300 flex items-center justify-center text-[10px] animate-pulse";
+        } else {
+          badge.className = "flex items-center gap-2 text-slate-500";
+          badge.querySelector('span:first-child').className = "w-4 h-4 rounded-full border border-slate-800 flex items-center justify-center text-[10px]";
+        }
+      }
+    }
+
+    function refreshActionFigureHistory() {
+      fetch('/api/action-figures')
+        .then(r => r.json())
+        .then(figures => {
+          const list = document.getElementById('action-figure-history-list');
+          if (!figures || figures.length === 0) {
+            list.innerHTML = `<div class="text-[11px] text-slate-500 text-center py-4">Belum ada riwayat action figure.</div>`;
+            return;
+          }
+          list.innerHTML = figures.slice(0, 6).map(f => `
+            <div onclick="loadActionFigureMesh('${f.id}')" class="p-2 rounded-lg bg-slate-950 border border-slate-800 hover:border-indigo-500 cursor-pointer transition flex items-center justify-between">
+              <div class="flex items-center gap-2 min-w-0">
+                <img src="/api/action-figures/${f.id}/image?type=cutout" onerror="this.src='/api/action-figures/${f.id}/image?type=source'" class="w-8 h-8 rounded object-cover bg-slate-900 border border-slate-800" />
+                <div class="min-w-0">
+                  <div class="font-semibold text-xs text-slate-200 truncate">${f.name}</div>
+                  <div class="text-[10px] text-slate-400">${f.status === 'Completed' ? `${(f.vertex_count||0).toLocaleString()} verts · ${f.duration_seconds?f.duration_seconds.toFixed(0)+'s':''}` : f.status}</div>
+                </div>
+              </div>
+              <button class="text-[11px] font-semibold text-indigo-400 hover:text-indigo-300 px-2 py-1 rounded bg-indigo-950/40 border border-indigo-900/60">Lihat</button>
+            </div>
+          `).join('');
+        })
+        .catch(() => {});
+    }
+
+    // =========================================================================
+    // MULTI-VIEW 3D STUDIO (WORKSPACE VIEW 2)
+    // =========================================================================
+    function initMultiView3D() {
+      const container = document.getElementById('viewer-container');
+      const width = container.clientWidth || 500;
+      const height = container.clientHeight || 460;
+
+      mvScene = new THREE.Scene();
+      mvScene.background = new THREE.Color(0x0a0f1d);
+
+      mvCamera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
+      mvCamera.position.set(2, 2, 2.5);
+
+      mvRenderer = new THREE.WebGLRenderer({ antialias: true });
+      mvRenderer.setSize(width, height);
+      container.appendChild(mvRenderer.domElement);
+
+      mvControls = new THREE.OrbitControls(mvCamera, mvRenderer.domElement);
+      mvControls.enableDamping = true;
+
+      const amb = new THREE.AmbientLight(0xffffff, 0.7);
+      mvScene.add(amb);
+      const dir = new THREE.DirectionalLight(0xffffff, 0.8);
+      dir.position.set(3, 4, 3);
+      mvScene.add(dir);
+
+      const grid = new THREE.GridHelper(4, 16, 0x334155, 0x1e293b);
+      mvScene.add(grid);
+
+      function anim() {
+        requestAnimationFrame(anim);
+        mvControls.update();
+        mvRenderer.render(mvScene, mvCamera);
+      }
+      anim();
+
+      window.addEventListener('resize', onMvResize);
+    }
+
+    function onMvResize() {
+      const container = document.getElementById('viewer-container');
+      if (!container || !mvRenderer || !mvCamera) return;
+      mvCamera.aspect = container.clientWidth / container.clientHeight;
+      mvCamera.updateProjectionMatrix();
+      mvRenderer.setSize(container.clientWidth, container.clientHeight);
+    }
+
+    function createAndRunProject() {
+      const name = document.getElementById('proj-name').value;
+      const cat = document.getElementById('proj-cat').value;
+      const fileInput = document.getElementById('proj-files');
+      const hasFiles = fileInput.files && fileInput.files.length > 0;
+      const btn = document.getElementById('btn-run');
+      btn.disabled = true;
+      btn.innerText = "Memproses...";
+
+      fetch('/api/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name, category: cat, auto_generate_synthetic_views: !hasFiles }),
+      })
+      .then(r => r.json())
+      .then(proj => {
+        currentProjectId = proj.id;
+        if (hasFiles) {
+          const form = new FormData();
+          for (let f of fileInput.files) form.append('files', f);
+          return fetch(`/api/projects/${proj.id}/images`, { method: 'POST', body: form });
+        }
+        return Promise.resolve();
+      })
+      .then(() => fetch(`/api/projects/${currentProjectId}/validate`, { method: 'POST' }))
+      .then(r => r.json())
+      .then(report => {
+        document.getElementById('status-badge').innerText = report.overall_valid ? "Validated" : "Warning";
+        return fetch(`/api/projects/${currentProjectId}/reconstruct`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ method: 'both' }),
+        });
+      })
+      .then(r => r.json())
+      .then(job => pollMvJob(job.job_id))
+      .catch(err => {
+        alert("Error: " + err);
+        btn.disabled = false;
+        btn.innerText = "Buat Proyek + Jalankan Rekonstruksi";
+      });
+    }
+
+    function pollMvJob(jobId) {
+      const interval = setInterval(() => {
+        fetch(`/api/jobs/${jobId}`)
+          .then(r => r.json())
+          .then(data => {
+            if (data.status === 'Completed') {
+              clearInterval(interval);
+              document.getElementById('btn-run').disabled = false;
+              document.getElementById('btn-run').innerText = "Buat Proyek + Jalankan Rekonstruksi";
+              loadProjectResults(currentProjectId);
+            }
+          });
+      }, 1000);
+    }
+
+    function loadProjectResults(projId) {
+      fetch(`/api/projects/${projId}/results`)
+        .then(r => r.json())
+        .then(data => {
+          renderMvMesh(data.results[currentModelSource]);
+        });
+
+      fetch(`/api/projects/${projId}/metrics`)
+        .then(r => r.json())
+        .then(data => {
+          const m = data.metrics;
+          if (m.ml) {
+            document.getElementById('m-ml-iou').innerText = (m.ml.iou || 0).toFixed(4);
+            document.getElementById('m-ml-cd').innerText = (m.ml.chamfer_distance || 0).toFixed(4);
+            document.getElementById('m-ml-f1').innerText = (m.ml.f_score || 0).toFixed(4);
+          }
+          if (m.baseline) {
+            document.getElementById('m-base-iou').innerText = (m.baseline.iou || 0).toFixed(4);
+            document.getElementById('m-base-cd').innerText = (m.baseline.chamfer_distance || 0).toFixed(4);
+            document.getElementById('m-base-f1').innerText = (m.baseline.f_score || 0).toFixed(4);
+          }
+        });
+    }
+
+    function renderMvMesh(res) {
+      if (!res || !res.vertices || res.vertices.length === 0) return;
+      if (mvCurrentMesh) mvScene.remove(mvCurrentMesh);
+
+      const geo = new THREE.BufferGeometry();
+      const pos = new Float32Array(res.vertices.flat());
+      const ind = new Uint32Array(res.faces.flat());
+
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      geo.setIndex(new THREE.BufferAttribute(ind, 1));
+      geo.computeVertexNormals();
+
+      const mat = new THREE.MeshStandardMaterial({ color: 0x6366f1, roughness: 0.4 });
+      mvCurrentMesh = new THREE.Mesh(geo, mat);
+      mvScene.add(mvCurrentMesh);
+
+      document.getElementById('mesh-stats').innerText = `Vertices: ${res.vertices.length} | Faces: ${res.faces.length} | Method: ${currentModelSource.toUpperCase()}`;
+    }
+
+    function selectModelSource(src) {
+      currentModelSource = src;
+      document.getElementById('btn-src-ml').className = src === 'ml' ? "px-2.5 py-1 rounded text-xs bg-indigo-600 text-white" : "px-2.5 py-1 rounded text-xs bg-slate-800 text-slate-300";
+      document.getElementById('btn-src-base').className = src === 'baseline' ? "px-2.5 py-1 rounded text-xs bg-indigo-600 text-white" : "px-2.5 py-1 rounded text-xs bg-slate-800 text-slate-300";
+      if (currentProjectId) loadProjectResults(currentProjectId);
+    }
+
+    function setRenderMode(mode) {
+      if (!mvCurrentMesh) return;
+      mvCurrentMesh.material.wireframe = (mode === 'wireframe');
+    }
+
+    function resetCamera() {
+      mvCamera.position.set(2, 2, 2.5);
+      mvControls.target.set(0, 0, 0);
+    }
+
+    function exportCurrentMesh(format) {
+      if (!currentProjectId) { alert("Pilih proyek terlebih dahulu."); return; }
+      window.location.href = `/api/projects/${currentProjectId}/export?format=${format}&source=${currentModelSource}`;
+    }
+
+    // =========================================================================
+    // ML LAB VIEW 3
+    // =========================================================================
+    function startExperiment() {
+      const name = document.getElementById('exp-name').value;
+      const epochs = parseInt(document.getElementById('exp-epochs').value);
+      const objects = parseInt(document.getElementById('exp-objects').value);
+
+      document.getElementById('btn-start-exp').disabled = true;
+      document.getElementById('btn-start-exp').innerText = "Sedang Melatih...";
+
+      fetch('/api/ml/experiments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name,
+          epochs: epochs,
+          num_train_objects: objects,
+          num_val_objects: Math.max(4, Math.floor(objects / 4)),
+          num_test_objects: Math.max(4, Math.floor(objects / 4)),
+        }),
+      })
+      .then(r => r.json())
+      .then(exp => pollExperiment(exp.experiment_id));
+    }
+
+    function pollExperiment(expId) {
+      const box = document.getElementById('exp-results-box');
+      const interval = setInterval(() => {
+        fetch(`/api/ml/experiments/${expId}`)
+          .then(r => r.json())
+          .then(data => {
+            box.innerText = JSON.stringify(data, null, 2);
+            if (data.status === 'Completed' || data.status === 'Failed') {
+              clearInterval(interval);
+              document.getElementById('btn-start-exp').disabled = false;
+              document.getElementById('btn-start-exp').innerText = "Mulai Pelatihan ML";
+            }
+          });
+      }, 1500);
+    }
+  </script>
+</body>
+</html>
